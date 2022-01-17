@@ -4,7 +4,6 @@
 </template>
 
 <style lang="scss">
-
 * {
   margin: 0;
   padding: 0;
@@ -14,14 +13,23 @@
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
 }
-
 </style>
 <script>
 import Header from "./components/Header";
+// import axios from "axios";
 export default {
-  components: { Header }
-}
+  components: { Header },
+  // beforeCreate() {
+  //   this.$store.commit("initializeStore");
+  //
+  //   const access = this.$store.state.access;
+  //
+  //   if (access) {
+  //     axios.defaults.headers.common["Authorization"] = "JWT " + access;
+  //   } else {
+  //     axios.defaults.headers.common["Authorization"] = "";
+  //   }
+  // },
+};
 </script>
