@@ -27,15 +27,21 @@
             />
           </svg>
         </router-link>
-        <router-link class="nav__link nav__link--service" to="/signin"
-          >Вход и регистрация</router-link
+        <a
+          v-show="!$store.getters.loggedIn"
+          @click="showModalLogin = true"
+          class="nav__link nav__link--service"
+          >Вход и регистрация</a
         >
       </div>
 
-      <div class="header__creation">
+      <div v-show="$store.getters.loggedIn" class="header__creation">
         <a @click="showModal = true" class="creation__link"
           >Разместить объявление</a
         >
+      </div>
+      <div v-show="$store.getters.loggedIn" class="header__creation">
+        <a @click="logout" class="creation__link creation__link--exit">Выход</a>
       </div>
     </div>
   </div>
@@ -44,7 +50,7 @@
       <h3 class="modal__title">Новое объявление</h3>
     </template>
     <template v-slot:body>
-      <form ref="addForm" class="modal__form" @submit.prevent="addAdvert">
+      <form ref="addForm" class="modal__form" @submit="addAdvert">
         <label class="form__label" for="title">Заголовок</label>
         <input
           id="title"
@@ -116,20 +122,71 @@
       </form>
     </template>
   </modal>
+
+  <modal v-show="showModalLogin" @close="showModalLogin = false">
+    <template v-slot:header>
+      <h3 class="modal__title">Вход</h3>
+    </template>
+    <template v-slot:body>
+      <form class="modal__form" @submit.prevent="loginUser">
+        <input
+          class="form__input"
+          id="username"
+          name="username"
+          type="text"
+          v-model="username"
+          placeholder="Логин"
+          required
+        />
+        <div class="password-wrapper">
+          <Icon
+            v-show="passwordVisible"
+            @click="showPassword"
+            class="eye"
+            icon="fa:eye"
+          />
+          <Icon
+            v-show="!passwordVisible"
+            @click="showPassword"
+            class="eye"
+            icon="fa-solid:eye-slash"
+          />
+
+          <input
+            class="form__input form__input--password"
+            id="password"
+            name="password"
+            :type="type"
+            v-model="password"
+            placeholder="Пароль"
+            required
+          />
+        </div>
+        <input
+          class="btn btn--primary btn--login"
+          type="submit"
+          value="Войти"
+        />
+      </form>
+    </template>
+  </modal>
 </template>
 
 <script>
 import modal from "../components/Modal.vue";
-// import axios from "axios";
+import axios from "axios";
+import { Icon } from "@iconify/vue";
 
 export default {
   name: "Header",
   components: {
     modal,
+    Icon,
   },
   data() {
     return {
       showModal: false,
+      showModalLogin: false,
       newAdvert: {
         title: "",
         description: "",
@@ -137,21 +194,29 @@ export default {
         address: "",
         photo: "",
       },
+      username: "",
+      password: "",
+      wrongCred: false,
+      type: "password",
+      passwordVisible: false,
     };
   },
   methods: {
-    async addAdvert() {
+    addAdvert() {
       const data = new FormData();
       Object.keys(this.newAdvert).forEach((key) =>
         data.append(key, this.newAdvert[key])
       );
 
-      await fetch(`${this.$store.getters.getServerUrl}/adverts/`, {
-        method: "post",
-        body: data,
-      }).then(() => {
-        this.showModal = false;
-      });
+      axios
+        .post(`${this.$store.getters.getServerUrl}/adverts/`, data, {
+          headers: {
+            Authorization: `Bearer ${this.$store.state.accessToken}`,
+          },
+        })
+        .then((response) => this.$router.push({ name: "Adverts" }));
+
+      this.showModal = false;
     },
     onFileChange(e) {
       let files = e.target.files || e.dataTransfer.files;
@@ -168,6 +233,38 @@ export default {
         address: "",
         photo: "",
       };
+    },
+    loginUser() {
+      console.log(1);
+      this.$store
+        .dispatch("loginUser", {
+          username: this.username,
+          password: this.password,
+        })
+        .then(() => {
+          this.wrongCred = false;
+          this.$router.push({ name: "Adverts" });
+        })
+        .catch((err) => {
+          console.log(err);
+          this.wrongCred = true; // if the credentials were wrong set wrongCred to true
+        });
+      this.showModalLogin = false;
+    },
+    showPassword() {
+      if (this.type === "password") {
+        this.type = "text";
+        this.passwordVisible = true;
+      } else {
+        this.type = "password";
+        this.passwordVisible = false;
+      }
+    },
+    logout() {
+      this.$store.dispatch("logoutUser")
+          .then(() => {
+        this.$router.push({ name: "Adverts" });
+      });
     },
   },
 };
@@ -234,6 +331,7 @@ export default {
 }
 
 .nav__link--service:hover {
+  cursor: pointer;
   color: #d9d9d9;
 }
 
@@ -251,8 +349,18 @@ export default {
   transition: 0.3s;
 }
 
+.creation__link--exit {
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
 .creation__link:hover {
   background-color: #009cf0;
+}
+
+.creation__link--exit:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
 }
 
 .modal__title {
@@ -290,6 +398,10 @@ textarea {
   border-color: #80bdff;
   outline: 0;
   box-shadow: 0 0 0 0.2rem rgb(0 123 255 / 25%);
+}
+
+.form__input--password {
+  width: 94%;
 }
 
 .file-wrapper {
@@ -393,5 +505,26 @@ textarea {
 .form__label {
   color: #35383d;
   margin-bottom: 7px;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.eye {
+  opacity: 0.6;
+  position: absolute;
+  top: 12px;
+  right: 15px;
+  transition: 0.3s;
+}
+
+.eye:hover {
+  cursor: pointer;
+  color: #ff6163;
+}
+
+.btn--login {
+  margin: 0 auto;
 }
 </style>

@@ -39,6 +39,7 @@
   </div>
   <div class="pagination-next">
     <Pagination
+      v-if="adverts.length !== 0 && adverts.length > 10"
       :total="total"
       :offset="offset"
       @change="getAdverts"
@@ -72,7 +73,6 @@ export default {
         offset = 0;
         this.offset = offset;
       }
-      console.log("After click", this.offset)
       this.adverts = await fetch(
         `${this.$store.getters.getServerUrl}/adverts/?limit=12&offset=${offset}`
       )
